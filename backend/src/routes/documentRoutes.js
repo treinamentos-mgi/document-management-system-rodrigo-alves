@@ -9,13 +9,14 @@ function createDocumentRouter({ controller, storageDir, maxFileSizeBytes }) {
   const upload = multer({
     storage: multer.diskStorage({
       destination: storageDir,
-      filename: (_req, _file, callback) => callback(null, randomUUID()),
+      filename: (req, _file, callback) => callback(null, req.documentId),
     }),
     limits: { fileSize: maxFileSizeBytes, files: 1 },
   });
   const router = express.Router();
 
   router.post('/upload', (req, res, next) => {
+    req.documentId = randomUUID();
     upload.single('file')(req, res, (error) => {
       if (error) {
         if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {

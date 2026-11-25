@@ -1,24 +1,22 @@
-const { randomUUID } = require('node:crypto');
-
 class DocumentService {
   constructor(documentRepository) {
     this.documentRepository = documentRepository;
   }
 
-  async registerUpload(file) {
+  async registerUpload(file, id) {
     const document = {
-      id: randomUUID(),
+      id,
       originalName: file.originalname,
       size: file.size,
       uploadedAt: new Date().toISOString(),
       owner: 'default',
-      storedName: file.filename,
+      storedName: id,
     };
 
     try {
       this.documentRepository.save(document);
     } catch (error) {
-      await this.documentRepository.removeStoredFile(file.filename).catch(() => {});
+      await this.documentRepository.removeStoredFile(id).catch(() => {});
       throw error;
     }
 

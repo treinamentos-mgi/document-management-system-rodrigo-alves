@@ -15,7 +15,7 @@ class DocumentController {
       throw new HttpError(400, 'Arquivo obrigatório.');
     }
 
-    const document = await this.documentService.registerUpload(req.file);
+    const document = await this.documentService.registerUpload(req.file, req.documentId);
     res.status(201).json(document);
   }
 
