@@ -1,27 +1,57 @@
-// Seed do servidor backend do Document Management System.
-//
-// Este arquivo é apenas um ponto de partida mínimo. Ao longo do workshop você
-// vai usar o Agent Mode do GitHub Copilot para construir as camadas:
-//   - routes/       (definição das rotas)
-//   - controllers/  (entrada HTTP e validação)
-//   - services/     (regras de negócio)
-//   - repositories/ (persistência: arquivos locais + metadados em memória)
-//
-// Restrição do projeto: uploads são gravados no filesystem local da aplicação
-// usando multer com diskStorage. Não utilize provedores externos.
-
 const express = require('express');
+const path = require('node:path');
+const createDocumentRouter = require('./routes/documentRoutes');
+const DocumentController = require('./controllers/documentController');
+const DocumentService = require('./services/documentService');
+const DocumentRepository = require('./repositories/documentRepository');
 
-const app = express();
 const PORT = process.env.PORT || 3000;
+const DEFAULT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
-app.use(express.json());
+function parseMaxFileSize(value) {
+  const maxFileSizeBytes = Number(value);
+  if (!Number.isSafeInteger(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
+    throw new Error('MAX_FILE_SIZE_BYTES deve ser um inteiro positivo.');
+  }
+  return maxFileSizeBytes;
+}
 
-// Endpoint de verificação de saúde. As demais rotas (/upload, /documents,
-// /documents/:id/download) serão implementadas durante o Passo 2.
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+function createApp(options = {}) {
+  const app = express();
+  const storageDir = path.resolve(
+    options.storageDir || path.join(__dirname, '..', 'storage'),
+  );
+  const maxFileSizeBytes = parseMaxFileSize(
+    options.maxFileSizeBytes ?? process.env.MAX_FILE_SIZE_BYTES ?? DEFAULT_MAX_FILE_SIZE_BYTES,
+  );
+
+  app.use(express.json());
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+  const documentRepository = new DocumentRepository(storageDir);
+  const documentService = new DocumentService(documentRepository);
+  const documentController = new DocumentController(documentService);
+  app.use(createDocumentRouter({
+    controller: documentController,
+    storageDir,
+    maxFileSizeBytes,
+  }));
+  app.use((error, _req, res, _next) => {
+    if (res.headersSent) return;
+    const status = error.status || (error.code === 'ENOENT' ? 404 : 500);
+    const message = status === 404
+      ? 'Documento não encontrado.'
+      : status === 400 || status === 413
+        ? error.message
+        : 'Erro interno do servidor.';
+    res.status(status).json({ error: message });
+  });
+
+  return app;
+}
+
+const app = createApp();
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -30,3 +60,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.createApp = createApp;
