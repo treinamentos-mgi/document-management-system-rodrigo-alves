@@ -1,5 +1,4 @@
 const { randomUUID } = require('node:crypto');
-const fs = require('node:fs/promises');
 
 class DocumentService {
   constructor(documentRepository) {
@@ -19,7 +18,7 @@ class DocumentService {
     try {
       this.documentRepository.save(document);
     } catch (error) {
-      await fs.unlink(file.path).catch(() => {});
+      await this.documentRepository.removeStoredFile(file.filename).catch(() => {});
       throw error;
     }
 

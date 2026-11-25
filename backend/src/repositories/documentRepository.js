@@ -1,4 +1,7 @@
 const path = require('node:path');
+const fs = require('node:fs/promises');
+
+const STORED_NAME_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 class DocumentRepository {
   constructor(storageDir) {
@@ -28,6 +31,14 @@ class DocumentRepository {
 
   getFilePath(document) {
     return path.join(this.storageDir, document.storedName);
+  }
+
+  async removeStoredFile(storedName) {
+    if (!STORED_NAME_PATTERN.test(storedName)) {
+      throw new Error('Nome de arquivo interno inválido.');
+    }
+
+    await fs.unlink(path.join(this.storageDir, storedName));
   }
 }
 
